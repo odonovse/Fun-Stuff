@@ -1,0 +1,6 @@
+# Data exports (pulled from Dune etc. — regenerate rather than commit)
+*.csv
+*.CSV
+
+# macOS
+.DS_Store
