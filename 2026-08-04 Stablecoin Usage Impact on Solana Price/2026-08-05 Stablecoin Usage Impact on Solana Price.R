@@ -74,6 +74,7 @@
   ## this to Zero and then Recalculate.
   
 
+  
     # Outlier Correction  
   data$net.minted <- ifelse(data$date == '2024-02-15', 0, data$net.minted)
   data$total.supply <- cumsum(data$net.minted)
@@ -86,6 +87,7 @@
   
   
 ## 2. Basic Visualisation and Summary Statistics ###############################
+  
   
   
   
@@ -194,9 +196,11 @@
   fig  
   
     
-      ## There seems to be a break in the series when there was a large surge in
-      ## stablecoin minting at the start of 2025, so lets assume two different
-      ## regimes are present
+  
+  ## There seems to be a break in the series when there was a large surge in
+  ## stablecoin minting at the start of 2025, so lets assume two different
+  ## regimes are present
+  
   
   
     # Generate Flag
@@ -218,9 +222,9 @@
   
   
   
-      ## We can also try an Econometric approach, even a rough basic one. Below
-      ## we can run a basic OLS regression of Stablecoin token supply against the
-      ## Solana price (in USD), with an assumed quadratic relationship.
+  ## We can also try an Econometric approach, even a rough basic one. Below
+  ## we can run a basic OLS regression of Stablecoin token supply against the
+  ## Solana price (in USD), with an assumed quadratic relationship.
   
   
   
@@ -288,6 +292,11 @@
   fig     
   
   
+  
+  ## We can then make the estimation a bit more robust by controlling for other
+  ## potential effects like net solana purchases, the number of daily active wallets
+  ## or day of the week or month of the year effects.
+  
  
   
     # Run Basic OLS Regression with Fixed Effects
@@ -347,4 +356,74 @@
                      axis.text = element_text(size = 12),
                      axis.line    = element_line(colour = 'black', linewidth = 0.5))
   fig <- fig + geom_hline(yintercept = 0, linetype = 'dashed', size = 0.5, colour = 'black')
+  fig   
+  
+  
+  
+  ## One last addition is inserting the regime change dummy variable that we made
+  ## to idenitfy the regime change level jump in stablecoin tokens minted in early
+  ## 2025.
+
+  
+  
+    # Run Basic OLS Regression with Fixed Effects
+  reg <- lm(data, formula = price ~ total.supply + total.supply.sq + net.solana + 
+              active.wallets + factor(day.of.week) + factor(month) + regime.change)
+  summary(reg)  
+  data$stablecoin.effect <- coef(reg)[2]*data$total.supply + coef(reg)[3]*data$total.supply.sq
+  data$stablecoin.effect.pct <- data$stablecoin.effect/data$price
+  
+    # Visualise the Relationship
+  fig <- ggplot(data, aes(x = total.supply/1000000, y = stablecoin.effect))
+  fig <- fig + geom_line(size = 2, alpha = 1, colour = '#073b4c')
+  fig <- fig + geom_hline(yintercept = 0, size = 0.5, colour = 'black', linetype = 'dashed')
+  fig <- fig + labs(x = 'Stablecoin Supply (Millions)', y = 'Price Impact on Solana ($)')
+  fig <- fig + scale_x_continuous(breaks = scales::breaks_pretty(n = 10), label = scales::comma)
+  fig <- fig + scale_y_continuous(breaks = scales::breaks_pretty(n = 10), label = scales::comma)
+  fig <- fig + theme_minimal()
+  fig <- fig + theme(axis.title.x = element_text(size = 15),
+                     axis.title.y = element_text(size = 15),
+                     axis.text = element_text(size = 12),
+                     axis.line    = element_line(colour = 'black', linewidth = 0.5))
+  fig   
+  
+    # Visualise the Estimated Impact - Absolute
+  fig <- ggplot(data, aes(x = date))
+  fig <- fig + geom_line(colour = '#b185db', linewidth = 2, alpha = 0.5, aes(y = price))
+  fig <- fig + geom_smooth(method = 'loess', formula = y ~ x, se = FALSE, linewidth = 1.2, 
+                           colour = '#6247aa', alpha = 1, span = 0.1, aes(y = price))
+  fig <- fig + geom_line(colour = '#118ab2', linewidth = 2, alpha = 0.5, aes(y = price - stablecoin.effect))
+  fig <- fig + geom_smooth(method = 'loess', formula = y ~ x, se = FALSE, linewidth = 1.2, 
+                           colour = '#073b4c', alpha = 1, span = 0.1, aes(y = price - stablecoin.effect))
+  fig <- fig + labs(x = '', y = 'Solana Price ($)')
+  fig <- fig + scale_x_date(breaks = scales::breaks_pretty(n = 10), date_labels = "%Y-%m")
+  fig <- fig + scale_y_continuous(breaks = scales::breaks_pretty(n = 10), label = scales::comma)
+  fig <- fig + theme_minimal()
+  fig <- fig + theme(axis.title.x = element_text(size = 15),
+                     axis.title.y = element_text(size = 15),
+                     axis.text = element_text(size = 12),
+                     axis.line    = element_line(colour = 'black', linewidth = 0.5))
+  fig <- fig + annotate('text', x = as.Date('2025-01-01'), y = 80, colour = '#073b4c', 
+                        label = 'No Stablecoins', size = 8, fontface = 2)
+  fig <- fig + annotate('text', x = as.Date('2024-08-01'), y = 260, colour = '#6247aa', 
+                        label = 'Actual Price', size = 8, fontface = 2)
+  fig   
+  
+    # Visualise the Estimated Impact (Pct)
+  fig <- ggplot(data, aes(x = date))
+  fig <- fig + geom_line(colour = '#118ab2', linewidth = 2, alpha = 0.5, aes(y = stablecoin.effect.pct))
+  fig <- fig + geom_smooth(method = 'loess', formula = y ~ x, se = FALSE, linewidth = 1.2, 
+                           colour = '#073b4c', alpha = 1, span = 0.1, aes(y = stablecoin.effect.pct))
+  fig <- fig + labs(x = '', y = 'Solana Price Effect (%)')
+  fig <- fig + scale_x_date(breaks = scales::breaks_pretty(n = 10), date_labels = "%Y-%m")
+  fig <- fig + scale_y_continuous(breaks = scales::breaks_pretty(n = 10), label = scales::percent)
+  fig <- fig + theme_minimal()
+  fig <- fig + theme(axis.title.x = element_text(size = 15),
+                     axis.title.y = element_text(size = 15),
+                     axis.text = element_text(size = 12),
+                     axis.line    = element_line(colour = 'black', linewidth = 0.5))
+  fig <- fig + geom_hline(yintercept = 0, linetype = 'dashed', size = 0.5, colour = 'black')
   fig     
+  
+  
+  
