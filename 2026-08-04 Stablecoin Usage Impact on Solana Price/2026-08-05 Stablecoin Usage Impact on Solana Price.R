@@ -15,7 +15,7 @@
     # Packages Needed
   packages <- c(
     "tidyverse", "data.table", "here", "janitor", "lubridate", "readxl", 
-    "writexl", "scales", "broom", "ggplot2", "httr2"
+    "writexl", "scales", "broom", "ggplot2", "httr2", "car"
   )
   
   for (pkg in packages) {
@@ -184,14 +184,15 @@
   fig <- fig + geom_point(size = 2, alpha = 0.5)
   fig <- fig + geom_smooth(method = 'lm', formula = y ~ x, se = FALSE, linewidth = 1.2, 
                            alpha = 1, span = 0.1)
-  fig <- fig + labs(x = 'Stablecoin Supply (Millions)', y = 'Solana Price ($)', colour = 'Year')
+  fig <- fig + labs(x = 'Stablecoin Supply (Millions)', y = 'Solana Price ($)', colour = 'Year:')
   fig <- fig + scale_x_continuous(breaks = scales::breaks_pretty(n = 10), label = scales::comma)
   fig <- fig + scale_y_continuous(breaks = scales::breaks_pretty(n = 10), label = scales::comma)
   fig <- fig + theme_minimal()
   fig <- fig + theme(axis.title.x = element_text(size = 15),
                      axis.title.y = element_text(size = 15),
                      axis.text = element_text(size = 12),
-                     axis.line    = element_line(colour = 'black', linewidth = 0.5))
+                     axis.line    = element_line(colour = 'black', linewidth = 0.5),
+                     legend.position = 'bottom')
   fig <- fig + scale_colour_manual(values = c('2024' = '#264653', '2025' = '#e76f51', '2026' = '#e9c46a'))
   fig  
   
@@ -203,20 +204,21 @@
   
   
   
-    # Generate Flag
+    # Generate Flag and Visualise
   data$regime.change <- ifelse(data$total.supply/1000000000 < 6, 'Less than 6bn Supply', 'Above 6bn Supply')
   fig <- ggplot(data, aes(x = total.supply/1000000, y = price, colour = factor(regime.change)))
   fig <- fig + geom_point(size = 2, alpha = 0.5)
   fig <- fig + geom_smooth(method = 'lm', formula = y ~ poly(x, 1), se = FALSE, linewidth = 1.2, 
                            alpha = 1)
-  fig <- fig + labs(x = 'Stablecoin Supply (Millions)', y = 'Solana Price ($)', colour = 'Year')
+  fig <- fig + labs(x = 'Stablecoin Supply (Millions)', y = 'Solana Price ($)', colour = 'Regime:')
   fig <- fig + scale_x_continuous(breaks = scales::breaks_pretty(n = 10), label = scales::comma)
   fig <- fig + scale_y_continuous(breaks = scales::breaks_pretty(n = 10), label = scales::comma)
   fig <- fig + theme_minimal()
   fig <- fig + theme(axis.title.x = element_text(size = 15),
                      axis.title.y = element_text(size = 15),
                      axis.text = element_text(size = 12),
-                     axis.line    = element_line(colour = 'black', linewidth = 0.5))
+                     axis.line    = element_line(colour = 'black', linewidth = 0.5),
+                     legend.position = 'bottom')
   fig <- fig + scale_colour_manual(values = c('Less than 6bn Supply' = '#264653', 'Above 6bn Supply' = '#40916c'))
   fig  
   
@@ -234,6 +236,7 @@
     # Run Basic OLS Regression with Fixed Effects
   reg <- lm(data, formula = price ~ total.supply + total.supply.sq)
   summary(reg)
+  car::vif(reg)
   
     # Estimate the Combined Stablecoin Effect
   data$stablecoin.effect <- coef(reg)[2]*data$total.supply + coef(reg)[3]*data$total.supply.sq
@@ -303,6 +306,7 @@
   reg <- lm(data, formula = price ~ total.supply + total.supply.sq + net.solana + 
               active.wallets + factor(day.of.week) + factor(month))
   summary(reg)  
+  car::vif(reg)
   data$stablecoin.effect <- coef(reg)[2]*data$total.supply + coef(reg)[3]*data$total.supply.sq
   data$stablecoin.effect.pct <- data$stablecoin.effect/data$price
   
@@ -370,7 +374,76 @@
   reg <- lm(data, formula = price ~ total.supply + total.supply.sq + net.solana + 
               active.wallets + factor(day.of.week) + factor(month) + regime.change)
   summary(reg)  
+  car::vif(reg)
   data$stablecoin.effect <- coef(reg)[2]*data$total.supply + coef(reg)[3]*data$total.supply.sq
+  data$stablecoin.effect.pct <- data$stablecoin.effect/data$price
+  
+    # Visualise the Relationship
+  fig <- ggplot(data, aes(x = total.supply/1000000, y = stablecoin.effect))
+  fig <- fig + geom_line(size = 2, alpha = 1, colour = '#073b4c')
+  fig <- fig + geom_hline(yintercept = 0, size = 0.5, colour = 'black', linetype = 'dashed')
+  fig <- fig + labs(x = 'Stablecoin Supply (Millions)', y = 'Price Impact on Solana ($)')
+  fig <- fig + scale_x_continuous(breaks = scales::breaks_pretty(n = 10), label = scales::comma)
+  fig <- fig + scale_y_continuous(breaks = scales::breaks_pretty(n = 10), label = scales::comma)
+  fig <- fig + theme_minimal()
+  fig <- fig + theme(axis.title.x = element_text(size = 15),
+                     axis.title.y = element_text(size = 15),
+                     axis.text = element_text(size = 12),
+                     axis.line    = element_line(colour = 'black', linewidth = 0.5))
+  fig   
+  
+    # Visualise the Estimated Impact - Absolute
+  fig <- ggplot(data, aes(x = date))
+  fig <- fig + geom_line(colour = '#b185db', linewidth = 2, alpha = 0.5, aes(y = price))
+  fig <- fig + geom_smooth(method = 'loess', formula = y ~ x, se = FALSE, linewidth = 1.2, 
+                           colour = '#6247aa', alpha = 1, span = 0.1, aes(y = price))
+  fig <- fig + geom_line(colour = '#118ab2', linewidth = 2, alpha = 0.5, aes(y = price - stablecoin.effect))
+  fig <- fig + geom_smooth(method = 'loess', formula = y ~ x, se = FALSE, linewidth = 1.2, 
+                           colour = '#073b4c', alpha = 1, span = 0.1, aes(y = price - stablecoin.effect))
+  fig <- fig + labs(x = '', y = 'Solana Price ($)')
+  fig <- fig + scale_x_date(breaks = scales::breaks_pretty(n = 10), date_labels = "%Y-%m")
+  fig <- fig + scale_y_continuous(breaks = scales::breaks_pretty(n = 10), label = scales::comma)
+  fig <- fig + theme_minimal()
+  fig <- fig + theme(axis.title.x = element_text(size = 15),
+                     axis.title.y = element_text(size = 15),
+                     axis.text = element_text(size = 12),
+                     axis.line    = element_line(colour = 'black', linewidth = 0.5))
+  fig <- fig + annotate('text', x = as.Date('2025-01-01'), y = 80, colour = '#073b4c', 
+                        label = 'No Stablecoins', size = 8, fontface = 2)
+  fig <- fig + annotate('text', x = as.Date('2024-08-01'), y = 260, colour = '#6247aa', 
+                        label = 'Actual Price', size = 8, fontface = 2)
+  fig   
+  
+    # Visualise the Estimated Impact (Pct)
+  fig <- ggplot(data, aes(x = date))
+  fig <- fig + geom_line(colour = '#118ab2', linewidth = 2, alpha = 0.5, aes(y = stablecoin.effect.pct))
+  fig <- fig + geom_smooth(method = 'loess', formula = y ~ x, se = FALSE, linewidth = 1.2, 
+                           colour = '#073b4c', alpha = 1, span = 0.1, aes(y = stablecoin.effect.pct))
+  fig <- fig + labs(x = '', y = 'Solana Price Effect (%)')
+  fig <- fig + scale_x_date(breaks = scales::breaks_pretty(n = 10), date_labels = "%Y-%m")
+  fig <- fig + scale_y_continuous(breaks = scales::breaks_pretty(n = 10), label = scales::percent)
+  fig <- fig + theme_minimal()
+  fig <- fig + theme(axis.title.x = element_text(size = 15),
+                     axis.title.y = element_text(size = 15),
+                     axis.text = element_text(size = 12),
+                     axis.line    = element_line(colour = 'black', linewidth = 0.5))
+  fig <- fig + geom_hline(yintercept = 0, linetype = 'dashed', size = 0.5, colour = 'black')
+  fig     
+  
+  
+  
+  ## Multicolinearity is very high for these regressions, driven alot by the quadratic
+  ## terms, but that is expected and acceptable. However, as a check we can remove
+  ## the square and re-estimate the model
+  
+  
+  
+    # Run Basic OLS Regression with Fixed Effects
+  reg <- lm(data, formula = price ~ total.supply + net.solana + 
+              active.wallets + factor(day.of.week) + factor(month) + regime.change)
+  summary(reg)  
+  car::vif(reg)
+  data$stablecoin.effect <- coef(reg)[2]*data$total.supply
   data$stablecoin.effect.pct <- data$stablecoin.effect/data$price
   
     # Visualise the Relationship
