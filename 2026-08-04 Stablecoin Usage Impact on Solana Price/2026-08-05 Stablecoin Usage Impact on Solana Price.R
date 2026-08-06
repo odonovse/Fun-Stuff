@@ -33,7 +33,7 @@
   
   
     # Load and Clean the Solana Dataset
-  data <- read.csv("~/Documents/Fun Stuff/2026-08-04 Stablecoin Usage Impact on Solana Price/Daily Solana Prices.csv")
+  data <- read.csv("~/Documents/GitHub/Fun-Stuff/2026-08-04 Stablecoin Usage Impact on Solana Price/Daily Solana Prices.csv")
   data$timestamp <- as.Date(data$timestamp, format = "%Y-%m-%d %H:%M:%OS", tz = "UTC")
   data$price <- as.numeric(data$price)
   colnames(data) <- c('date', 'price')
@@ -45,19 +45,19 @@
   length(data$date)
   
     # Load and Clean the Stablecoin Dataset
-  temp <- read.csv("~/Documents/Fun Stuff/2026-08-04 Stablecoin Usage Impact on Solana Price/Daily Stablecoin Minting.csv")
+  temp <- read.csv("~/Documents/GitHub/Fun-Stuff/2026-08-04 Stablecoin Usage Impact on Solana Price/Daily Stablecoin Minting.csv")
   temp$block_date <- as.Date(temp$block_date, format = "%Y-%m-%d")
   temp[c("net_minted", "total_supply")] <- lapply(temp[c("net_minted", "total_supply")], as.numeric)
   colnames(temp) <- c('date', 'net.minted', 'total.supply')
   
     # Load and Clean Solana Trades Dataset
-  base <- read.csv("~/Documents/Fun Stuff/2026-08-04 Stablecoin Usage Impact on Solana Price/Daily Solana Trade Volumes.csv")
+  base <- read.csv("~/Documents/GitHub/Fun-Stuff/2026-08-04 Stablecoin Usage Impact on Solana Price/Daily Solana Trade Volumes.csv")
   base$block_date <- as.Date(base$block_date, format = "%Y-%m-%d")
   base[c("usd_volumes", "solana_net", "solana_volume", "trades")] <- lapply(base[c("usd_volumes", "solana_net", "solana_volume", "trades")], as.numeric)
   colnames(base) <- c('date', 'trades', 'usd.volumes', 'net.solana', 'solana.volumes')
   
     # Load and Clean Wallets Dataset
-  addon <- read.csv("~/Documents/Fun Stuff/2026-08-04 Stablecoin Usage Impact on Solana Price/Daily Active Solana Users.csv")
+  addon <- read.csv("~/Documents/GitHub/Fun-Stuff/2026-08-04 Stablecoin Usage Impact on Solana Price/Daily Active Solana Users.csv")
   addon$date <- as.Date(addon$date, format = "%Y-%m-%d")
   addon$active_wallets <- as.numeric(addon$active_wallets)
   colnames(addon) <- c('date', 'active.wallets')
