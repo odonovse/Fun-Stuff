@@ -1,6 +1,7 @@
+-- Extract Daily Price Information
 select
-    timestamp,
-    price
+    timestamp as date,
+    price as sol_price_usd
 from prices.day
 where blockchain = 'solana'
     and symbol = 'SOL'
