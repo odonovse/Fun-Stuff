@@ -5,7 +5,8 @@
 # Created:     2026-08-05
 #
 # Changelog:
-#   2026-08-05  SOD  Initial version.
+#   2026-08-05 - SOD - Initial version.
+#   2026-08-07 - SOD - Incorporate Stablecoin Trades
 ################################################################################
 
 
