@@ -44,6 +44,12 @@
 
   
   
+  ## First we can explore the impact buybacks are having on $PUMP activity, we 
+  ## can subtract the buyback and burn activity to see what others are doing, net
+  ## of the buybacks.
+  
+  
+  
     # Estimate Buyback Penetration
   data$buyback.share <- data$buybacks/data$buys
   data$net.volume <- data$buy.volumes - (data$volumes - data$buy.volumes)
@@ -90,11 +96,18 @@
   fig <- fig + annotate('text', x = as.Date('2026-06-20'), y = -1750000, size = 8, fontface = 2, label = 'Net Volumes (Excl. Burns)', colour = '#ff6d00')
   fig
   
+    # Assess Cumulative Totals
+  sum(data$net.volume[data$date >= '2026-05-01'])
+  sum(data$net.volume.excl.buybacks[data$date >= '2026-05-01'])
+  
   
   
 ## 3. Assess Token Engagement ##################################################
   
   
+  
+  ## We also can assess the engagement with the token in terms of DEX users and
+  ## volumes overtime.
   
   
   
