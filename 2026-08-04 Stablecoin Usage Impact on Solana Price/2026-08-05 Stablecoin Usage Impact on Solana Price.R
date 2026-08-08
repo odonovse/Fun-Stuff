@@ -514,6 +514,7 @@
   
     # Merge the Data and Clean
   data <- merge(data, temp, all = FALSE)
+  data$stablecoin.volumes <- ifelse(data$stablecoin.volumes > 1000000000, 1000000000, data$stablecoin.volumes)
   
     # Plot the Trades Overtime
   fig <- ggplot(data, aes(x = date))
@@ -530,9 +531,65 @@
                      axis.line    = element_line(colour = 'black', linewidth = 0.5))
   fig     
 
+    # Run Basic OLS Regression with Fixed Effects
+  data$stablecoin.trades.sq <- data$stablecoin.trades^2
+  data$stablecoin.volumes.sq <- data$stablecoin.volumes^2
+  reg <- lm(data, formula = price ~ stablecoin.trades + stablecoin.trades.sq + trades +  
+              active.wallets + factor(day.of.week) + factor(month) + factor(year))
+  summary(reg)  
+  car::vif(reg)
+  data$stablecoin.effect <- coef(reg)[2]*data$stablecoin.trades + coef(reg)[3]*data$stablecoin.trades.sq
+  data$stablecoin.effect.pct <- data$stablecoin.effect/data$price
   
+  # Visualise the Relationship
+  fig <- ggplot(data, aes(x = total.supply/1000000, y = stablecoin.effect))
+  fig <- fig + geom_line(size = 2, alpha = 1, colour = '#ff595e')
+  fig <- fig + geom_hline(yintercept = 0, size = 0.5, colour = 'black', linetype = 'dashed')
+  fig <- fig + labs(x = 'Stablecoin Supply (Millions)', y = 'Price Impact on Solana ($)')
+  fig <- fig + scale_x_continuous(breaks = scales::breaks_pretty(n = 10), label = scales::comma)
+  fig <- fig + scale_y_continuous(breaks = scales::breaks_pretty(n = 10), label = scales::comma)
+  fig <- fig + theme_minimal()
+  fig <- fig + theme(axis.title.x = element_text(size = 15),
+                     axis.title.y = element_text(size = 15),
+                     axis.text = element_text(size = 12),
+                     axis.line    = element_line(colour = 'black', linewidth = 0.5))
+  fig   
   
+  # Visualise the Estimated Impact - Absolute
+  fig <- ggplot(data, aes(x = date))
+  fig <- fig + geom_line(colour = '#b185db', linewidth = 2, alpha = 0.5, aes(y = price))
+  fig <- fig + geom_smooth(method = 'loess', formula = y ~ x, se = FALSE, linewidth = 1.2, 
+                           colour = '#6247aa', alpha = 1, span = 0.1, aes(y = price))
+  fig <- fig + geom_line(colour = '#e39695', linewidth = 2, alpha = 0.5, aes(y = price - stablecoin.effect))
+  fig <- fig + geom_smooth(method = 'loess', formula = y ~ x, se = FALSE, linewidth = 1.2, 
+                           colour = '#ff595e', alpha = 1, span = 0.1, aes(y = price - stablecoin.effect))
+  fig <- fig + labs(x = '', y = 'Solana Price ($)')
+  fig <- fig + scale_x_date(breaks = scales::breaks_pretty(n = 10), date_labels = "%Y-%m")
+  fig <- fig + scale_y_continuous(breaks = scales::breaks_pretty(n = 10), label = scales::comma)
+  fig <- fig + theme_minimal()
+  fig <- fig + theme(axis.title.x = element_text(size = 15),
+                     axis.title.y = element_text(size = 15),
+                     axis.text = element_text(size = 12),
+                     axis.line    = element_line(colour = 'black', linewidth = 0.5))
+  fig <- fig + annotate('text', x = as.Date('2025-01-01'), y = 80, colour = '#ff595e', 
+                        label = 'No Stablecoins', size = 8, fontface = 2)
+  fig <- fig + annotate('text', x = as.Date('2024-08-01'), y = 260, colour = '#6247aa', 
+                        label = 'Actual Price', size = 8, fontface = 2)
+  fig   
   
-  
-  
+  # Visualise the Estimated Impact (Pct)
+  fig <- ggplot(data, aes(x = date))
+  fig <- fig + geom_line(colour = '#e39695', linewidth = 2, alpha = 0.5, aes(y = stablecoin.effect.pct))
+  fig <- fig + geom_smooth(method = 'loess', formula = y ~ x, se = FALSE, linewidth = 1.2, 
+                           colour = '#ff595e', alpha = 1, span = 0.1, aes(y = stablecoin.effect.pct))
+  fig <- fig + labs(x = '', y = 'Solana Price Effect (%)')
+  fig <- fig + scale_x_date(breaks = scales::breaks_pretty(n = 10), date_labels = "%Y-%m")
+  fig <- fig + scale_y_continuous(breaks = scales::breaks_pretty(n = 10), label = scales::percent)
+  fig <- fig + theme_minimal()
+  fig <- fig + theme(axis.title.x = element_text(size = 15),
+                     axis.title.y = element_text(size = 15),
+                     axis.text = element_text(size = 12),
+                     axis.line    = element_line(colour = 'black', linewidth = 0.5))
+  fig <- fig + geom_hline(yintercept = 0, linetype = 'dashed', size = 0.5, colour = 'black')
+  fig    
   
