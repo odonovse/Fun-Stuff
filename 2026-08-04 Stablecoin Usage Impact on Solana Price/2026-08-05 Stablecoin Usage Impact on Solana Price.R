@@ -67,6 +67,8 @@
   data <- merge(data, base, by = c('date'), all = FALSE)
   data <- merge(data, addon, by = c('date'), all = FALSE)
   
+    # Fix Missing Values
+  data <- subset(data, !is.na(data$trades))
   
 
   ## There is an issue with the cumulative sum from Dune, driven alot by an outlier
@@ -496,6 +498,41 @@
                      axis.line    = element_line(colour = 'black', linewidth = 0.5))
   fig <- fig + geom_hline(yintercept = 0, linetype = 'dashed', size = 0.5, colour = 'black')
   fig     
+  
+  
+  
+  
+## 4. Incorporate Stablecoin Trading Activity ##################################
+  
+  
+  
+    # Load and Clean Wallets Dataset
+  temp <- read.csv("~/Documents/GitHub/Fun-Stuff/2026-08-04 Stablecoin Usage Impact on Solana Price/Daily Stablecoin Trades.csv")
+  temp$block_date <- as.Date(temp$block_date, format = "%Y-%m-%d")
+  temp[c("stablecoin_trades", "stablecoin_volumes")] <- lapply(temp[c("stablecoin_trades", "stablecoin_volumes")], as.numeric)
+  colnames(temp) <- c('date', "stablecoin.trades", "stablecoin.volumes")
+  
+    # Merge the Data and Clean
+  data <- merge(data, temp, all = FALSE)
+  
+    # Plot the Trades Overtime
+  fig <- ggplot(data, aes(x = date))
+  fig <- fig + geom_line(colour = '#e39695', linewidth = 2, alpha = 0.5, aes(y = stablecoin.volumes))
+  fig <- fig + geom_smooth(method = 'loess', formula = y ~ x, se = FALSE, linewidth = 1.2, 
+                           colour = '#ff595e', alpha = 1, span = 0.1, aes(y = stablecoin.volumes))
+  fig <- fig + labs(x = '', y = 'Stablecoin Trades')
+  fig <- fig + scale_x_date(breaks = scales::breaks_pretty(n = 10), date_labels = "%Y-%m")
+  fig <- fig + scale_y_continuous(breaks = scales::breaks_pretty(n = 10), label = scales::comma)
+  fig <- fig + theme_minimal()
+  fig <- fig + theme(axis.title.x = element_text(size = 15),
+                     axis.title.y = element_text(size = 15),
+                     axis.text = element_text(size = 12),
+                     axis.line    = element_line(colour = 'black', linewidth = 0.5))
+  fig     
+
+  
+  
+  
   
   
   
